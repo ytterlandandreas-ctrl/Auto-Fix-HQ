@@ -1,0 +1,901 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── PLATFORM / SAAS ───────────────────────────────────────────────────────
+
+enum PlanTier {
+  free
+  starter
+  pro
+  enterprise
+}
+
+model Shop {
+  id                String   @id @default(cuid())
+  name              String
+  slug              String   @unique
+  logoUrl           String?
+  phone             String?
+  email             String?
+  website           String?
+  timezone          String   @default("America/New_York")
+  taxRate           Float    @default(0)
+  laborRate         Float    @default(0)
+  currency          String   @default("USD")
+  stripeAccountId   String?
+  stripeOnboarded   Boolean  @default(false)
+  isSuspended       Boolean  @default(false)
+  suspendedAt       DateTime?
+  shopType          String?
+  onboardedAt       DateTime?
+  trialEndsAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  locations          ShopLocation[]
+  users              User[]
+  subscription       ShopSubscription?
+  addons             ShopAddon[]
+  customers          Customer[]
+  vehicles           Vehicle[]
+  repairOrders       RepairOrder[]
+  estimates          Estimate[]
+  invoices           Invoice[]
+  inspections        DigitalInspection[]
+  appointments       Appointment[]
+  inventoryItems     InventoryItem[]
+  messages           Message[]
+  crmCampaigns       CRMCampaign[]
+  integrations       Integration[]
+  auditLogs          AuditLog[]
+  collisionClaims    CollisionClaim[]
+  insuranceCompanies InsuranceCompany[]
+  purchaseOrders     SupplierPurchaseOrder[]
+  cannedJobs         CannedJob[]
+  shopDiscounts      ShopDiscount[]
+  addonBundles       ShopAddonBundle[]
+}
+
+model ShopLocation {
+  id        String   @id @default(cuid())
+  shopId    String
+  name      String
+  address   String
+  city      String
+  state     String
+  zip       String
+  phone     String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  shop         Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  repairOrders RepairOrder[]
+  users        User[]
+
+  @@index([shopId])
+}
+
+model ShopSubscription {
+  id                   String    @id @default(cuid())
+  shopId               String    @unique
+  stripeCustomerId     String    @unique
+  stripeSubscriptionId String?   @unique
+  stripePriceId        String?
+  status               String
+  planTier             PlanTier  @default(starter)
+  freeAccessMode       String?
+  freeAccessNote       String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  canceledAt           DateTime?
+  cancelReason         String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model ShopAddon {
+  id                   String    @id @default(cuid())
+  shopId               String
+  addonKey             String
+  stripeSubscriptionId String?
+  stripePriceId        String?
+  isActive             Boolean   @default(true)
+  activatedAt          DateTime  @default(now())
+  deactivatedAt        DateTime?
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, addonKey])
+  @@index([shopId])
+}
+
+// ─── USERS ─────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  platform_owner
+  shop_owner
+  shop_manager
+  service_writer
+  technician
+}
+
+model User {
+  id           String    @id @default(cuid())
+  shopId       String?
+  locationId   String?
+  email        String    @unique
+  name         String
+  phone        String?
+  passwordHash String?
+  role         UserRole  @default(service_writer)
+  avatarUrl    String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  shop             Shop?                       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  location         ShopLocation?               @relation(fields: [locationId], references: [id])
+  sessions         Session[]
+  repairOrders     RepairOrder[]               @relation("AssignedWriter")
+  techClocks       TechnicianTimeClock[]
+  efficiencyScores TechnicianEfficiencyScore[]
+  auditLogs        AuditLog[]
+
+  @@index([shopId])
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+// ─── CUSTOMERS & VEHICLES ──────────────────────────────────────────────────
+
+model Customer {
+  id          String    @id @default(cuid())
+  shopId      String
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String
+  altPhone    String?
+  address     String?
+  city        String?
+  state       String?
+  zip         String?
+  notes       String?
+  smsOptIn    Boolean   @default(true)
+  emailOptIn  Boolean   @default(true)
+  source      String?
+  tags        String[]
+  totalSpent  Float     @default(0)
+  visitCount  Int       @default(0)
+  lastVisitAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  shop           Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  vehicles       Vehicle[]
+  repairOrders   RepairOrder[]
+  appointments   Appointment[]
+  messages       Message[]
+  crmEnrollments CRMEnrollment[]
+
+  @@index([shopId])
+  @@index([phone])
+  @@index([email])
+}
+
+model Vehicle {
+  id              String    @id @default(cuid())
+  shopId          String
+  customerId      String
+  vin             String?
+  year            Int
+  make            String
+  model           String
+  trim            String?
+  color           String?
+  licensePlate    String?
+  state           String?
+  mileage         Int?
+  lastMileage     Int?
+  engineSize      String?
+  transmission    String?
+  driveType       String?
+  fuelType        String?
+  notes           String?
+  carfaxCheckedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  shop         Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  repairOrders RepairOrder[]
+  appointments Appointment[]
+
+  @@index([shopId])
+  @@index([customerId])
+  @@index([vin])
+}
+
+// ─── REPAIR ORDERS ─────────────────────────────────────────────────────────
+
+enum ROStatus {
+  estimate
+  approved
+  in_progress
+  qc
+  completed
+  invoiced
+  paid
+  cancelled
+}
+
+enum ROType {
+  mechanical
+  body_collision
+  maintenance
+  diagnostic
+  tires
+  glass
+  electrical
+}
+
+model RepairOrder {
+  id              String    @id @default(cuid())
+  shopId          String
+  locationId      String?
+  roNumber        String
+  customerId      String
+  vehicleId       String
+  writerId        String?
+  status          ROStatus  @default(estimate)
+  roType          ROType    @default(mechanical)
+  mileageIn       Int?
+  mileageOut      Int?
+  promisedAt      DateTime?
+  completedAt     DateTime?
+  isComeback      Boolean   @default(false)
+  comebackFromId  String?
+  customerConcern String?
+  techNotes       String?
+  internalNotes   String?
+  laborTotal      Float     @default(0)
+  partsTotal      Float     @default(0)
+  subletTotal     Float     @default(0)
+  feeTotal        Float     @default(0)
+  taxTotal        Float     @default(0)
+  discountTotal   Float     @default(0)
+  grandTotal      Float     @default(0)
+  paidAmount      Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  shop           Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  location       ShopLocation?      @relation(fields: [locationId], references: [id])
+  customer       Customer           @relation(fields: [customerId], references: [id])
+  vehicle        Vehicle            @relation(fields: [vehicleId], references: [id])
+  writer         User?              @relation("AssignedWriter", fields: [writerId], references: [id])
+  lineItems      ROLineItem[]
+  inspection     DigitalInspection?
+  invoice        Invoice?
+  techClocks     TechnicianTimeClock[]
+  messages       Message[]
+  collisionClaim CollisionClaim?
+  auditLogs      AuditLog[]
+
+  @@unique([shopId, roNumber])
+  @@index([shopId])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([status])
+}
+
+enum LineItemType {
+  labor
+  part
+  sublet
+  fee
+}
+
+model ROLineItem {
+  id             String       @id @default(cuid())
+  repairOrderId  String
+  type           LineItemType
+  description    String
+  technicianId   String?
+  partNumber     String?
+  quantity       Float        @default(1)
+  unitPrice      Float
+  laborHours     Float?
+  laborTimeGuide Float?
+  isTaxable      Boolean      @default(true)
+  isOem          Boolean?
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+
+  repairOrder RepairOrder @relation(fields: [repairOrderId], references: [id], onDelete: Cascade)
+
+  @@index([repairOrderId])
+}
+
+model CannedJob {
+  id          String   @id @default(cuid())
+  shopId      String
+  name        String
+  description String?
+  laborHours  Float?
+  laborPrice  Float?
+  parts       Json?
+  createdAt   DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+}
+
+// ─── ESTIMATES & INVOICES ──────────────────────────────────────────────────
+
+model Estimate {
+  id            String    @id @default(cuid())
+  shopId        String
+  repairOrderId String?   @unique
+  customerId    String?
+  vehicleId     String?
+  status        String    @default("draft")
+  token         String    @unique
+  validUntil    DateTime?
+  sentAt        DateTime?
+  approvedAt    DateTime?
+  declinedAt    DateTime?
+  notes         String?
+  subtotal      Float     @default(0)
+  taxTotal      Float     @default(0)
+  total         Float     @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([token])
+}
+
+model Invoice {
+  id                    String    @id @default(cuid())
+  shopId                String
+  repairOrderId         String    @unique
+  invoiceNumber         String
+  status                String    @default("unpaid")
+  token                 String    @unique
+  dueDate               DateTime?
+  paidAt                DateTime?
+  subtotal              Float
+  taxTotal              Float
+  discountTotal         Float     @default(0)
+  total                 Float
+  paidAmount            Float     @default(0)
+  stripePaymentIntentId String?
+  stripePaymentLinkId   String?
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  repairOrder RepairOrder @relation(fields: [repairOrderId], references: [id])
+  payments    Payment[]
+
+  @@unique([shopId, invoiceNumber])
+  @@index([shopId])
+  @@index([token])
+}
+
+model Payment {
+  id                    String   @id @default(cuid())
+  shopId                String
+  invoiceId             String
+  amount                Float
+  method                String
+  stripePaymentIntentId String?
+  reference             String?
+  processedAt           DateTime @default(now())
+  createdAt             DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+// ─── DIGITAL VEHICLE INSPECTIONS ───────────────────────────────────────────
+
+enum InspectionStatus {
+  draft
+  in_progress
+  sent
+  partially_approved
+  approved
+  declined
+}
+
+model DigitalInspection {
+  id            String           @id @default(cuid())
+  shopId        String
+  repairOrderId String           @unique
+  technicianId  String?
+  status        InspectionStatus @default(draft)
+  token         String           @unique
+  sentAt        DateTime?
+  respondedAt   DateTime?
+  showPricing   Boolean          @default(true)
+  customerNotes String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  shop        Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  repairOrder RepairOrder      @relation(fields: [repairOrderId], references: [id])
+  items       InspectionItem[]
+
+  @@index([shopId])
+  @@index([token])
+}
+
+enum InspectionCondition {
+  ok
+  needs_attention
+  critical
+}
+
+enum InspectionDecision {
+  pending
+  approved
+  declined
+}
+
+model InspectionItem {
+  id            String              @id @default(cuid())
+  inspectionId  String
+  category      String
+  name          String
+  condition     InspectionCondition @default(ok)
+  decision      InspectionDecision  @default(pending)
+  techNotes     String?
+  estimatedCost Float?
+  sortOrder     Int                 @default(0)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  inspection DigitalInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  media      InspectionMedia[]
+
+  @@index([inspectionId])
+}
+
+model InspectionMedia {
+  id         String   @id @default(cuid())
+  itemId     String
+  url        String
+  type       String   @default("photo")
+  blobKey    String?
+  caption    String?
+  uploadedAt DateTime @default(now())
+
+  item InspectionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+// ─── APPOINTMENTS ──────────────────────────────────────────────────────────
+
+enum AppointmentStatus {
+  scheduled
+  confirmed
+  in_shop
+  completed
+  cancelled
+  no_show
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  shopId          String
+  locationId      String?
+  customerId      String
+  vehicleId       String?
+  technicianId    String?
+  status          AppointmentStatus @default(scheduled)
+  serviceType     String?
+  notes           String?
+  scheduledAt     DateTime
+  durationMins    Int               @default(60)
+  reminderSent48h Boolean           @default(false)
+  reminderSent2h  Boolean           @default(false)
+  confirmedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id])
+  vehicle  Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  @@index([shopId])
+  @@index([scheduledAt])
+}
+
+// ─── INVENTORY ─────────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id               String    @id @default(cuid())
+  shopId           String
+  partNumber       String
+  description      String
+  brand            String?
+  category         String?
+  isInternal       Boolean   @default(false)
+  quantityOnHand   Float     @default(0)
+  quantityReserved Float     @default(0)
+  reorderPoint     Float     @default(0)
+  reorderQty       Float     @default(0)
+  costPrice        Float     @default(0)
+  retailPrice      Float     @default(0)
+  location         String?
+  supplierId       String?
+  partsTechId      String?
+  lastOrderedAt    DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  shop         Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  transactions InventoryTransaction[]
+  poItems      POLineItem[]
+
+  @@unique([shopId, partNumber])
+  @@index([shopId])
+}
+
+model InventoryTransaction {
+  id        String   @id @default(cuid())
+  itemId    String
+  type      String
+  quantity  Float
+  reference String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  item InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+model SupplierPurchaseOrder {
+  id           String    @id @default(cuid())
+  shopId       String
+  poNumber     String
+  supplierName String
+  status       String    @default("draft")
+  submittedAt  DateTime?
+  receivedAt   DateTime?
+  totalCost    Float     @default(0)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  shop      Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  lineItems POLineItem[]
+
+  @@index([shopId])
+}
+
+model POLineItem {
+  id               String  @id @default(cuid())
+  poId             String
+  itemId           String?
+  partNumber       String
+  description      String
+  quantityOrdered  Float
+  quantityReceived Float   @default(0)
+  unitCost         Float
+  createdAt        DateTime @default(now())
+
+  po   SupplierPurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  item InventoryItem?        @relation(fields: [itemId], references: [id])
+
+  @@index([poId])
+}
+
+// ─── TECHNICIAN PRODUCTIVITY ───────────────────────────────────────────────
+
+model TechnicianTimeClock {
+  id            String    @id @default(cuid())
+  shopId        String
+  technicianId  String
+  repairOrderId String?
+  lineItemId    String?
+  clockedInAt   DateTime
+  clockedOutAt  DateTime?
+  totalMinutes  Int?
+  notes         String?
+  createdAt     DateTime  @default(now())
+
+  technician  User         @relation(fields: [technicianId], references: [id])
+  repairOrder RepairOrder? @relation(fields: [repairOrderId], references: [id])
+
+  @@index([technicianId])
+  @@index([repairOrderId])
+}
+
+model TechnicianEfficiencyScore {
+  id            String   @id @default(cuid())
+  shopId        String
+  technicianId  String
+  date          DateTime
+  billedHours   Float    @default(0)
+  clockedHours  Float    @default(0)
+  efficiencyPct Float    @default(0)
+  comebackCount Int      @default(0)
+  roCount       Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  technician User @relation(fields: [technicianId], references: [id])
+
+  @@unique([technicianId, date])
+  @@index([shopId, date])
+}
+
+// ─── COMMUNICATIONS ────────────────────────────────────────────────────────
+
+model Message {
+  id            String    @id @default(cuid())
+  shopId        String
+  customerId    String?
+  repairOrderId String?
+  channel       String
+  direction     String
+  from          String
+  to            String
+  body          String
+  subject       String?
+  status        String    @default("sent")
+  twilioSid     String?
+  resendId      String?
+  errorMessage  String?
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  readAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  shop        Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  repairOrder RepairOrder? @relation(fields: [repairOrderId], references: [id])
+
+  @@index([shopId])
+  @@index([customerId])
+}
+
+// ─── CRM ───────────────────────────────────────────────────────────────────
+
+model CRMCampaign {
+  id          String   @id @default(cuid())
+  shopId      String
+  name        String
+  triggerType String
+  channel     String
+  subject     String?
+  body        String
+  isActive    Boolean  @default(true)
+  delayDays   Int      @default(0)
+  sentCount   Int      @default(0)
+  openCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  shop        Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  enrollments CRMEnrollment[]
+
+  @@index([shopId])
+}
+
+model CRMEnrollment {
+  id          String    @id @default(cuid())
+  campaignId  String
+  customerId  String
+  status      String    @default("pending")
+  scheduledAt DateTime
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  campaign CRMCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, customerId])
+  @@index([campaignId])
+  @@index([scheduledAt])
+}
+
+// ─── BODY/COLLISION MODULE ─────────────────────────────────────────────────
+
+model InsuranceCompany {
+  id          String   @id @default(cuid())
+  shopId      String
+  name        String
+  claimsPhone String?
+  email       String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  shop   Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  claims CollisionClaim[]
+
+  @@index([shopId])
+}
+
+model CollisionClaim {
+  id                String    @id @default(cuid())
+  shopId            String
+  repairOrderId     String    @unique
+  insuranceCoId     String?
+  claimNumber       String?
+  adjusterName      String?
+  adjusterPhone     String?
+  adjusterEmail     String?
+  coverageType      String?
+  deductible        Float?
+  estimatedApproved Float?
+  rentalCarNeeded   Boolean   @default(false)
+  rentalCarCompany  String?
+  rentalCarAuth     String?
+  status            String    @default("intake")
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  shop        Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  repairOrder RepairOrder        @relation(fields: [repairOrderId], references: [id])
+  insurance   InsuranceCompany?  @relation(fields: [insuranceCoId], references: [id])
+  supplements SupplementRequest[]
+
+  @@index([shopId])
+}
+
+model SupplementRequest {
+  id          String    @id @default(cuid())
+  claimId     String
+  reason      String
+  amount      Float
+  status      String    @default("draft")
+  submittedAt DateTime?
+  respondedAt DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  claim CollisionClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+}
+
+// ─── INTEGRATIONS ──────────────────────────────────────────────────────────
+
+model Integration {
+  id             String    @id @default(cuid())
+  shopId         String
+  type           String
+  status         String    @default("disconnected")
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  config         Json?
+  lastCheckedAt  DateTime?
+  lastErrorAt    DateTime?
+  lastError      String?
+  connectedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, type])
+  @@index([shopId])
+}
+
+// ─── SUBSCRIPTION DISCOUNTS & BUNDLES ──────────────────────────────────────
+
+model DiscountCode {
+  id              String    @id @default(cuid())
+  code            String?   @unique
+  label           String
+  discountType    String    // "percent" | "fixed_amount"
+  discountValue   Float
+  durationMonths  Int?
+  expiresAt       DateTime?
+  maxRedemptions  Int?
+  redemptionCount Int       @default(0)
+  isActive        Boolean   @default(true)
+  stripeId        String?
+  createdByAdminId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  shopDiscounts ShopDiscount[]
+}
+
+model ShopDiscount {
+  id               String    @id @default(cuid())
+  shopId           String
+  discountCodeId   String
+  appliedAt        DateTime  @default(now())
+  appliedByAdminId String?
+  expiresAt        DateTime?
+  stripeId         String?
+
+  shop         Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  discountCode DiscountCode @relation(fields: [discountCodeId], references: [id])
+
+  @@index([shopId])
+}
+
+model AddonBundle {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  addonKeys     String[]
+  bundlePrice   Float
+  stripePriceId String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  shopBundles ShopAddonBundle[]
+}
+
+model ShopAddonBundle {
+  id            String    @id @default(cuid())
+  shopId        String
+  bundleId      String
+  activatedAt   DateTime  @default(now())
+  deactivatedAt DateTime?
+
+  shop   Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  bundle AddonBundle @relation(fields: [bundleId], references: [id])
+
+  @@index([shopId])
+}
+
+// ─── AUDIT LOG ─────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  shopId        String
+  userId        String?
+  repairOrderId String?
+  action        String
+  entityType    String
+  entityId      String
+  before        Json?
+  after         Json?
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  shop        Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id])
+  repairOrder RepairOrder? @relation(fields: [repairOrderId], references: [id])
+
+  @@index([shopId])
+  @@index([entityType, entityId])
+}
