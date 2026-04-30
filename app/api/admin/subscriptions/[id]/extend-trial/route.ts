@@ -13,21 +13,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { days } = await req.json();
   if (!days || days < 1) return NextResponse.json({ error: "Invalid days" }, { status: 400 });
 
-  const subscription = await db.shopSubscription.findUnique({ where: { id } });
+  const subscription = await db.shopSubscription.findUnique({
+    where: { id },
+    include: { shop: true },
+  });
   if (!subscription) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (subscription.status !== "trialing") {
     return NextResponse.json({ error: "Subscription is not trialing" }, { status: 400 });
   }
 
-  const newTrialEnd = new Date((subscription.trialEndsAt ?? new Date()).getTime() + days * 24 * 60 * 60 * 1000);
+  const newTrialEnd = new Date((subscription.shop.trialEndsAt ?? new Date()).getTime() + days * 24 * 60 * 60 * 1000);
 
-  await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-    trial_end: Math.floor(newTrialEnd.getTime() / 1000),
-    proration_behavior: "none",
-  });
+  if (subscription.stripeSubscriptionId) {
+    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+      trial_end: Math.floor(newTrialEnd.getTime() / 1000),
+      proration_behavior: "none",
+    });
+  }
 
-  await db.shopSubscription.update({
-    where: { id },
+  await db.shop.update({
+    where: { id: subscription.shopId },
     data: { trialEndsAt: newTrialEnd },
   });
 

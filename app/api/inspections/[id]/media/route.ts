@@ -25,11 +25,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const media = await db.inspectionMedia.create({
     data: {
-      inspectionItemId,
+      itemId: inspectionItemId,
       type: file.type.startsWith("video/") ? "video" : "photo",
       url: blob.url,
-      filename: file.name,
-      sizeBytes: file.size,
+      blobKey: blob.pathname,
+      caption: file.name,
     },
   });
 

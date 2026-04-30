@@ -30,11 +30,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   const shop = await db.shop.findUnique({
     where: { id: shopId },
     include: {
-      subscriptions: {
-        where: { status: { in: ["active", "trialing"] } },
-        include: { addons: { where: { isActive: true } } },
-        take: 1,
-      },
+      addons: { where: { isActive: true } },
     },
   });
 
@@ -57,7 +53,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
     );
   }
 
-  const activeAddons = shop.subscriptions[0]?.addons.map((a) => a.addonKey) ?? [];
+  const activeAddons = shop.addons.map((a) => a.addonKey);
 
   return (
     <ShopShell

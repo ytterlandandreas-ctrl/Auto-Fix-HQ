@@ -22,7 +22,6 @@ export default async function SettingsPage() {
     }),
     db.shopSubscription.findFirst({
       where: { shopId },
-      include: { addons: true },
     }),
     db.shopDiscount.findMany({
       where: { shopId },

@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
       payment_behavior: "default_incomplete",
     });
 
+    // Stripe Dahlia (2026-04-22) moved current_period_* from Subscription to subscription items
+    const subItem = subscription.items.data[0];
+
     // Create shop + owner user in one transaction
     await db.$transaction(async (tx) => {
       const shop = await tx.shop.create({
@@ -63,8 +66,12 @@ export async function POST(req: NextRequest) {
               stripeSubscriptionId: subscription.id,
               stripePriceId: process.env.STRIPE_PRICE_BASE!,
               status: "trialing",
-              currentPeriodStart: new Date(subscription.current_period_start * 1000),
-              currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+              currentPeriodStart: subItem?.current_period_start
+                ? new Date(subItem.current_period_start * 1000)
+                : null,
+              currentPeriodEnd: subItem?.current_period_end
+                ? new Date(subItem.current_period_end * 1000)
+                : null,
             },
           },
         },

@@ -97,7 +97,7 @@ export function AnalyticsClient({ kpis, insights, revenueByDay, rosByStatus, top
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v: number) => formatCurrency(v)} labelFormatter={(l) => new Date(l).toLocaleDateString()} />
+              <Tooltip formatter={((v: any) => formatCurrency(Number(v))) as any} labelFormatter={(l) => new Date(l).toLocaleDateString()} />
               <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -114,7 +114,7 @@ export function AnalyticsClient({ kpis, insights, revenueByDay, rosByStatus, top
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <PieChart>
-                <Pie data={rosByStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={70} label={({ status, count }) => `${status} (${count})`}>
+                <Pie data={rosByStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={70} label={(props: any) => `${props.status} (${props.count})`}>
                   {rosByStatus.map((entry, i) => (
                     <Cell key={i} fill={STATUS_COLORS[entry.status] ?? "#94a3b8"} />
                   ))}

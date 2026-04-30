@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-12-18.acacia",
+  apiVersion: "2026-04-22.dahlia",
   typescript: true,
 });
 
@@ -90,14 +90,16 @@ export async function createConnectAccount(email: string) {
 
 export async function createConnectAccountLink(
   accountId: string,
-  shopId: string
+  returnUrl: string,
+  refreshUrl: string
 ) {
-  return stripe.accountLinks.create({
+  const link = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/shop/settings/payments?refresh=true`,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/shop/settings/payments?connected=true&shopId=${shopId}`,
+    refresh_url: refreshUrl,
+    return_url: returnUrl,
     type: "account_onboarding",
   });
+  return link.url;
 }
 
 export async function createPaymentLink(
@@ -123,7 +125,9 @@ export async function createPaymentLink(
       metadata: { invoiceId },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/portal/invoice/${invoiceId}?paid=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/portal/invoice/${invoiceId}`,
-      application_fee_amount: Math.round(amount * 100 * 0.015), // 1.5% platform fee
+      payment_intent_data: {
+        application_fee_amount: Math.round(amount * 100 * 0.015), // 1.5% platform fee
+      },
     },
     { stripeAccount: shopStripeAccountId }
   );
@@ -177,7 +181,7 @@ export async function createStripePromoCode(couponId: string, code?: string) {
   return stripe.promotionCodes.create({
     coupon: couponId,
     ...(code ? { code } : {}),
-  });
+  } as any);
 }
 
 /** Apply a discount (via promotion code or coupon) to an existing subscription */
@@ -186,13 +190,15 @@ export async function applyDiscountToSubscription(
   couponId: string
 ) {
   return stripe.subscriptions.update(subscriptionId, {
-    coupon: couponId,
+    discounts: [{ coupon: couponId }],
   });
 }
 
 /** Remove the active discount from a subscription */
 export async function removeDiscountFromSubscription(subscriptionId: string) {
-  return stripe.subscriptions.deleteDiscount(subscriptionId);
+  return stripe.subscriptions.update(subscriptionId, {
+    discounts: [],
+  });
 }
 
 /** Validate a promo code string. Returns the promotion code object or null. */

@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     include: {
       customer: { select: { id: true, firstName: true, lastName: true, phone: true } },
       vehicle: { select: { id: true, year: true, make: true, model: true } },
-      assignedTech: { select: { id: true, name: true } },
+      technician: { select: { id: true, name: true } },
     },
     orderBy: { scheduledAt: "asc" },
   });
@@ -44,32 +44,14 @@ export async function POST(req: Request) {
       shopId,
       customerId,
       vehicleId: vehicleId || null,
-      assignedTechId: technicianId || null,
+      technicianId: technicianId || null,
       scheduledAt: new Date(scheduledAt),
-      estimatedDuration: estimatedDuration ?? 60,
+      durationMins: estimatedDuration ?? 60,
       serviceType: serviceType || null,
       notes: notes || null,
       status: "scheduled",
     },
   });
-
-  // Schedule SMS reminder (24h before) — fire and forget
-  const apptTime = new Date(scheduledAt);
-  const reminderTime = new Date(apptTime.getTime() - 24 * 60 * 60 * 1000);
-  if (reminderTime > new Date()) {
-    const customer = await db.customer.findUnique({ where: { id: customerId } });
-    if (customer?.smsOptIn && customer.phone) {
-      // Store reminder intent (actual send happens via cron/queue in production)
-      await db.appointmentReminder.create({
-        data: {
-          appointmentId: appt.id,
-          scheduledFor: reminderTime,
-          type: "24h",
-          status: "pending",
-        },
-      }).catch(() => {}); // non-fatal if reminders table doesn't exist yet
-    }
-  }
 
   return NextResponse.json(appt, { status: 201 });
 }

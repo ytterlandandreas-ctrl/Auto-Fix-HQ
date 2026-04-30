@@ -13,7 +13,8 @@ export default async function AdminShopDetailPage({ params }: { params: Promise<
     where: { id },
     include: {
       locations: true,
-      subscriptions: { include: { addons: true }, orderBy: { createdAt: "desc" } },
+      subscription: true,
+      addons: true,
       users: { select: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true } },
       _count: {
         select: {

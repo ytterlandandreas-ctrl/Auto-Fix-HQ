@@ -10,17 +10,16 @@ export async function POST(req: Request) {
   const { claimNumber, insuranceCompanyId, adjusterName, adjusterPhone, adjusterEmail, coverageType, deductible, roId } = await req.json();
 
   if (!insuranceCompanyId) return NextResponse.json({ error: "insuranceCompanyId required" }, { status: 400 });
+  if (!roId) return NextResponse.json({ error: "roId required" }, { status: 400 });
 
-  // Validate RO belongs to shop if provided
-  if (roId) {
-    const ro = await db.repairOrder.findFirst({ where: { id: roId, shopId } });
-    if (!ro) return NextResponse.json({ error: "Repair order not found" }, { status: 404 });
-  }
+  const ro = await db.repairOrder.findFirst({ where: { id: roId, shopId } });
+  if (!ro) return NextResponse.json({ error: "Repair order not found" }, { status: 404 });
 
   const claim = await db.collisionClaim.create({
     data: {
+      shopId,
       repairOrderId: roId,
-      insuranceCompanyId,
+      insuranceCoId: insuranceCompanyId,
       claimNumber: claimNumber || null,
       adjusterName: adjusterName || null,
       adjusterPhone: adjusterPhone || null,

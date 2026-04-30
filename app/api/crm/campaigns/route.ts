@@ -19,13 +19,22 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const shopId = (session.user as any).shopId as string;
 
-  const { name, triggerType, channel, messageTemplate, isActive } = await req.json();
-  if (!name || !triggerType || !channel || !messageTemplate) {
+  const { name, triggerType, channel, messageTemplate, body, subject, isActive } = await req.json();
+  const messageBody = body ?? messageTemplate;
+  if (!name || !triggerType || !channel || !messageBody) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   const campaign = await db.cRMCampaign.create({
-    data: { shopId, name, triggerType, channel, messageTemplate, isActive: isActive ?? true },
+    data: {
+      shopId,
+      name,
+      triggerType,
+      channel,
+      body: messageBody,
+      subject: subject ?? null,
+      isActive: isActive ?? true,
+    },
   });
   return NextResponse.json(campaign, { status: 201 });
 }

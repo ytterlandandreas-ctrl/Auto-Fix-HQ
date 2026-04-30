@@ -7,12 +7,10 @@ export default async function CollisionPage() {
   const session = await auth();
   const shopId = (session!.user as any).shopId as string;
 
-  const subscription = await db.shopSubscription.findFirst({
-    where: { shopId, status: { in: ["active", "trialing"] } },
-    include: { addons: true },
+  const addons = await db.shopAddon.findMany({
+    where: { shopId, isActive: true },
   });
-
-  const hasCollision = subscription?.addons?.some((a) => a.addonKey === "collision") ?? false;
+  const hasCollision = addons.some((a) => a.addonKey === "collision");
 
   if (!hasCollision) {
     return <CollisionGate />;
@@ -29,7 +27,7 @@ export default async function CollisionPage() {
             customer: { select: { firstName: true, lastName: true } },
           },
         },
-        insuranceCompany: true,
+        insurance: true,
         supplements: true,
       },
       orderBy: { createdAt: "desc" },

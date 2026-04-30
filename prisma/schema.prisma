@@ -146,6 +146,8 @@ model User {
   location         ShopLocation?               @relation(fields: [locationId], references: [id])
   sessions         Session[]
   repairOrders     RepairOrder[]               @relation("AssignedWriter")
+  inspections      DigitalInspection[]         @relation("InspectionTechnician")
+  appointments     Appointment[]               @relation("AppointmentTechnician")
   techClocks       TechnicianTimeClock[]
   efficiencyScores TechnicianEfficiencyScore[]
   auditLogs        AuditLog[]
@@ -297,6 +299,7 @@ model RepairOrder {
   lineItems      ROLineItem[]
   inspection     DigitalInspection?
   invoice        Invoice?
+  estimate       Estimate?
   techClocks     TechnicianTimeClock[]
   messages       Message[]
   collisionClaim CollisionClaim?
@@ -373,7 +376,8 @@ model Estimate {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop        Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  repairOrder RepairOrder? @relation(fields: [repairOrderId], references: [id])
 
   @@index([shopId])
   @@index([token])
@@ -451,6 +455,7 @@ model DigitalInspection {
 
   shop        Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
   repairOrder RepairOrder      @relation(fields: [repairOrderId], references: [id])
+  technician  User?            @relation("InspectionTechnician", fields: [technicianId], references: [id])
   items       InspectionItem[]
 
   @@index([shopId])
@@ -531,9 +536,10 @@ model Appointment {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  customer Customer @relation(fields: [customerId], references: [id])
-  vehicle  Vehicle? @relation(fields: [vehicleId], references: [id])
+  shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer   Customer @relation(fields: [customerId], references: [id])
+  vehicle    Vehicle? @relation(fields: [vehicleId], references: [id])
+  technician User?    @relation("AppointmentTechnician", fields: [technicianId], references: [id])
 
   @@index([shopId])
   @@index([scheduledAt])

@@ -13,9 +13,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const subscription = await db.shopSubscription.findUnique({ where: { id } });
   if (!subscription) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-    cancel_at_period_end: false,
-  });
+  if (subscription.stripeSubscriptionId) {
+    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+      cancel_at_period_end: false,
+    });
+  }
 
   await db.shopSubscription.update({
     where: { id },

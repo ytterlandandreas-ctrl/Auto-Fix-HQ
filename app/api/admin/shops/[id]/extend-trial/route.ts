@@ -15,19 +15,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const subscription = await db.shopSubscription.findFirst({
     where: { shopId: id, status: "trialing" },
+    include: { shop: true },
   });
   if (!subscription) return NextResponse.json({ error: "No trialing subscription" }, { status: 404 });
 
-  const newTrialEnd = new Date((subscription.trialEndsAt ?? new Date()).getTime() + days * 24 * 60 * 60 * 1000);
+  const newTrialEnd = new Date((subscription.shop.trialEndsAt ?? new Date()).getTime() + days * 24 * 60 * 60 * 1000);
 
-  // Update Stripe
-  await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-    trial_end: Math.floor(newTrialEnd.getTime() / 1000),
-    proration_behavior: "none",
-  });
+  // Update Stripe (only if linked)
+  if (subscription.stripeSubscriptionId) {
+    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+      trial_end: Math.floor(newTrialEnd.getTime() / 1000),
+      proration_behavior: "none",
+    });
+  }
 
-  await db.shopSubscription.update({
-    where: { id: subscription.id },
+  await db.shop.update({
+    where: { id },
     data: { trialEndsAt: newTrialEnd },
   });
 

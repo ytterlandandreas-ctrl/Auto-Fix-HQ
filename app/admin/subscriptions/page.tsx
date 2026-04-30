@@ -15,35 +15,45 @@ export default async function AdminSubscriptionsPage({
   const where: any = {};
   if (status) where.status = status;
 
-  const subscriptions = await db.shopSubscription.findMany({
+  let subscriptions = await db.shopSubscription.findMany({
     where,
     include: {
       shop: {
-        where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
         select: {
           id: true,
           name: true,
           email: true,
           trialEndsAt: true,
+          addons: true,
           integrations: {
             where: { type: { in: ["stripe_connect", "paypal", "square"] } },
             select: { type: true, status: true },
           },
         },
       },
-      addons: true,
     },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
 
-  const filtered = q ? subscriptions.filter((s) => s.shop) : subscriptions;
+  if (q) {
+    const needle = q.toLowerCase();
+    subscriptions = subscriptions.filter((s) =>
+      s.shop?.name?.toLowerCase().includes(needle)
+    );
+  }
+
+  // Surface addons at the subscription level for the consumer component
+  const enriched = subscriptions.map((s) => ({
+    ...s,
+    addons: s.shop?.addons ?? [],
+  }));
 
   const totals = {
-    active: filtered.filter((s) => s.status === "active").length,
-    trialing: filtered.filter((s) => s.status === "trialing").length,
-    past_due: filtered.filter((s) => s.status === "past_due").length,
-    canceled: filtered.filter((s) => s.status === "canceled").length,
+    active: enriched.filter((s) => s.status === "active").length,
+    trialing: enriched.filter((s) => s.status === "trialing").length,
+    past_due: enriched.filter((s) => s.status === "past_due").length,
+    canceled: enriched.filter((s) => s.status === "canceled").length,
   };
 
   return (
@@ -75,7 +85,7 @@ export default async function AdminSubscriptionsPage({
         </button>
       </form>
 
-      <SubscriptionActionsClient subscriptions={filtered as any} />
+      <SubscriptionActionsClient subscriptions={enriched as any} />
     </div>
   );
 }

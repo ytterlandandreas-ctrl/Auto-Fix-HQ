@@ -55,7 +55,7 @@ export function LocaleProvider({
     } catch {}
   }, []);
 
-  const t = dictionaries[locale] ?? dictionaries.en;
+  const t: Dictionary = (dictionaries[locale] as Dictionary) ?? (dictionaries.en as Dictionary);
 
   const formatDate = useCallback((d: Date | string) => {
     const date = typeof d === "string" ? new Date(d) : d;

@@ -18,7 +18,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!claim) return NextResponse.json({ error: "Claim not found" }, { status: 404 });
 
   const supplement = await db.supplementRequest.create({
-    data: { claimId: id, description, amount, status: "draft" },
+    data: { claimId: id, reason: description, amount, status: "draft" },
   });
 
   return NextResponse.json(supplement, { status: 201 });

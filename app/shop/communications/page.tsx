@@ -42,7 +42,7 @@ export default async function CommunicationsPage({
   }
 
   const unreadCount = await db.message.count({
-    where: { shopId, direction: "inbound", isRead: false },
+    where: { shopId, direction: "inbound", readAt: null },
   });
 
   return (

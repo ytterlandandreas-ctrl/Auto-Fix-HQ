@@ -56,9 +56,15 @@ export async function enqueueOfflineAction(
   return id;
 }
 
-export async function syncOfflineQueue(onConflict?: (action: unknown) => void) {
+export async function syncOfflineQueue(
+  onConflict?: (action: unknown) => void
+): Promise<{ synced: number; conflicts: number; failed: number }> {
   const db = await getDB();
   const all = await db.getAll("queue");
+
+  let synced = 0;
+  let conflicts = 0;
+  let failed = 0;
 
   for (const action of all) {
     try {
@@ -70,16 +76,22 @@ export async function syncOfflineQueue(onConflict?: (action: unknown) => void) {
 
       if (res.ok) {
         await db.delete("queue", action.id);
+        synced++;
       } else if (res.status === 409) {
         onConflict?.(action);
         await db.delete("queue", action.id);
+        conflicts++;
       } else {
         await db.put("queue", { ...action, retries: action.retries + 1 });
+        failed++;
       }
     } catch {
       await db.put("queue", { ...action, retries: action.retries + 1 });
+      failed++;
     }
   }
+
+  return { synced, conflicts, failed };
 }
 
 export async function getPendingCount(): Promise<number> {

@@ -23,7 +23,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
           vehicle: { select: { year: true, make: true, model: true } },
         },
       },
-      payments: { where: { status: "succeeded" } },
+      payments: true,
     },
     orderBy: { createdAt: "desc" },
     take: 100,

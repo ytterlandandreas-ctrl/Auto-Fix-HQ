@@ -39,8 +39,7 @@ export default async function AppointmentsPage({
     include: {
       customer: { select: { id: true, firstName: true, lastName: true, phone: true } },
       vehicle: { select: { id: true, year: true, make: true, model: true } },
-      assignedTech: { select: { id: true, name: true } },
-      repairOrder: { select: { id: true, roNumber: true } },
+      technician: { select: { id: true, name: true } },
     },
     orderBy: { scheduledAt: "asc" },
   });

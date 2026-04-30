@@ -22,7 +22,7 @@ export default async function AnalyticsPage({
 
   // Revenue by day
   const payments = await db.payment.findMany({
-    where: { shopId, createdAt: { gte: since }, status: "succeeded" },
+    where: { shopId, createdAt: { gte: since } },
     select: { amount: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
@@ -42,15 +42,24 @@ export default async function AnalyticsPage({
     _count: { id: true },
   });
 
-  // Top services (from RO line items)
-  const topServices = await db.rOLineItem.groupBy({
-    by: ["description"],
+  // Top services (from RO line items) — manual aggregation since ROLineItem has no `total` column
+  const laborItems = await db.rOLineItem.findMany({
     where: { repairOrder: { shopId, createdAt: { gte: since } }, type: "labor" },
-    _count: { id: true },
-    _sum: { total: true },
-    orderBy: { _count: { id: "desc" } },
-    take: 10,
+    select: { description: true, quantity: true, unitPrice: true },
   });
+  const topServiceMap = new Map<string, { count: number; revenue: number }>();
+  for (const li of laborItems) {
+    const key = li.description;
+    const existing = topServiceMap.get(key) ?? { count: 0, revenue: 0 };
+    topServiceMap.set(key, {
+      count: existing.count + 1,
+      revenue: existing.revenue + li.quantity * li.unitPrice,
+    });
+  }
+  const topServices = Array.from(topServiceMap.entries())
+    .map(([description, data]) => ({ description, count: data.count, revenue: data.revenue }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
 
   // Tech efficiency scores
   const techEfficiency = await db.technicianEfficiencyScore.findMany({
@@ -80,9 +89,9 @@ export default async function AnalyticsPage({
   // Parts margin
   const parts = await db.rOLineItem.findMany({
     where: { repairOrder: { shopId, createdAt: { gte: since } }, type: "part" },
-    select: { quantity: true, unitPrice: true, total: true },
+    select: { quantity: true, unitPrice: true },
   });
-  const partsRevenue = parts.reduce((sum, p) => sum + (p.total ?? 0), 0);
+  const partsRevenue = parts.reduce((sum, p) => sum + p.quantity * p.unitPrice, 0);
   const partsMargin = partsRevenue > 0 ? Math.round(((partsRevenue - partsRevenue * 0.65) / partsRevenue) * 100) : 0;
 
   return (
@@ -90,8 +99,8 @@ export default async function AnalyticsPage({
       kpis={kpis}
       insights={insights}
       revenueByDay={revenueByDay}
-      rosByStatus={rosByStatus.map((r) => ({ status: r.status, count: r._count.id }))}
-      topServices={topServices.map((s) => ({ description: s.description, count: s._count.id, revenue: s._sum.total ?? 0 }))}
+      rosByStatus={rosByStatus.map((r) => ({ status: r.status, count: r._count?.id ?? 0 }))}
+      topServices={topServices}
       techStats={techStats}
       partsMarginPct={partsMargin}
       range={range}

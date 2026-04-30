@@ -10,14 +10,15 @@ export async function POST(req: Request) {
 
   const shop = await db.shop.findUnique({
     where: { id: shopId },
-    select: { id: true, name: true, stripeConnectId: true, email: true },
+    select: { id: true, name: true, stripeAccountId: true, email: true },
   });
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  let connectId = shop.stripeConnectId;
+  let connectId = shop.stripeAccountId;
   if (!connectId) {
-    connectId = await createConnectAccount(shop.name, shop.email ?? "");
-    await db.shop.update({ where: { id: shopId }, data: { stripeConnectId: connectId } });
+    const account = await createConnectAccount(shop.email ?? "");
+    connectId = account.id;
+    await db.shop.update({ where: { id: shopId }, data: { stripeAccountId: connectId } });
   }
 
   const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL}/shop/integrations?connect=success`;

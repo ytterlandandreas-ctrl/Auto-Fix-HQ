@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     });
 
     await tx.shopLocation.updateMany({
-      where: { shopId, isPrimary: true },
+      where: { shopId, isDefault: true },
       data: { address, city, state, zip, phone },
     });
 
@@ -36,17 +36,17 @@ export async function POST(req: Request) {
       if (subscription) {
         for (const addonKey of addons) {
           await tx.shopAddon.create({
-            data: { subscriptionId: subscription.id, addonKey, isActive: true },
+            data: { shopId, addonKey, isActive: true },
           }).catch(() => {});
         }
 
         // Update Stripe subscription items (best-effort)
         try {
-          const items = addons
-            .map((key: string) => ADDON_PRICES[key])
-            .filter(Boolean)
-            .map((price: string) => ({ price }));
-          if (items.length > 0) {
+          if (subscription.stripeSubscriptionId) {
+            const items = addons
+              .map((key: string) => ADDON_PRICES[key])
+              .filter(Boolean)
+              .map((price: string) => ({ price }));
             for (const item of items) {
               await stripe.subscriptionItems.create({
                 subscription: subscription.stripeSubscriptionId,

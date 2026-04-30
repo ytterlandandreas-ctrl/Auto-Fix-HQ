@@ -12,12 +12,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const ro = await db.repairOrder.findFirst({
     where: { id, shopId, status: "completed" },
-    include: { shop: true, customer: true },
+    include: { shop: true, customer: true, invoice: true },
   });
   if (!ro) return NextResponse.json({ error: "RO not found or not completed" }, { status: 404 });
 
   if (ro.invoice) {
-    return NextResponse.json({ invoiceId: ro.invoice }, { status: 200 });
+    return NextResponse.json({ invoiceId: ro.invoice.id }, { status: 200 });
   }
 
   const count = await db.invoice.count({ where: { shopId } });

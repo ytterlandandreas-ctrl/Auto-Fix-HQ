@@ -17,7 +17,7 @@ export async function PATCH(req: Request) {
   await db.$transaction([
     db.shop.update({ where: { id: shopId }, data: { name, taxRate, laborRate } }),
     db.shopLocation.updateMany({
-      where: { shopId, isPrimary: true },
+      where: { shopId, isDefault: true },
       data: { phone, address, city, state, zip },
     }),
   ]);

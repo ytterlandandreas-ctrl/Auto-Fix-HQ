@@ -11,12 +11,10 @@ export default async function IntegrationsPage() {
     orderBy: { type: "asc" },
   });
 
-  const subscription = await db.shopSubscription.findFirst({
-    where: { shopId, status: { in: ["active", "trialing"] } },
-    include: { addons: true },
+  const addons = await db.shopAddon.findMany({
+    where: { shopId, isActive: true },
   });
-
-  const activeAddons = subscription?.addons.map((a) => a.addonKey) ?? [];
+  const activeAddons = addons.map((a) => a.addonKey);
 
   return <IntegrationsClient integrations={integrations as any} activeAddons={activeAddons} shopId={shopId} />;
 }

@@ -12,5 +12,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!session) redirect("/login");
   if ((session.user as any).role !== "platform_owner") redirect("/shop/dashboard");
 
-  return <AdminShell user={session.user}>{children}</AdminShell>;
+  return <AdminShell user={session.user as any}>{children}</AdminShell>;
 }

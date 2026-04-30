@@ -55,16 +55,26 @@ export default async function EstimatesPage() {
             {estimates.map((est) => (
               <tr key={est.id} className="border-b border-slate-50 hover:bg-slate-50">
                 <td className="px-5 py-3">
-                  <Link href={`/shop/repair-orders/${est.repairOrder.id}`} className="font-medium text-blue-600 hover:underline flex items-center gap-1">
-                    <FileText className="w-3.5 h-3.5" /> #{est.estimateNumber}
-                  </Link>
-                  <p className="text-xs text-slate-400">RO #{est.repairOrder.roNumber}</p>
+                  {est.repairOrder ? (
+                    <Link href={`/shop/repair-orders/${est.repairOrder.id}`} className="font-medium text-blue-600 hover:underline flex items-center gap-1">
+                      <FileText className="w-3.5 h-3.5" /> Est-{est.id.slice(-6).toUpperCase()}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-slate-700 inline-flex items-center gap-1">
+                      <FileText className="w-3.5 h-3.5" /> Est-{est.id.slice(-6).toUpperCase()}
+                    </span>
+                  )}
+                  <p className="text-xs text-slate-400">{est.repairOrder ? `RO #${est.repairOrder.roNumber}` : "No RO linked"}</p>
                 </td>
                 <td className="px-5 py-3 text-slate-600">
-                  {est.repairOrder.customer.firstName} {est.repairOrder.customer.lastName}
+                  {est.repairOrder
+                    ? `${est.repairOrder.customer.firstName} ${est.repairOrder.customer.lastName}`
+                    : "—"}
                 </td>
                 <td className="px-5 py-3 text-slate-500 text-xs">
-                  {est.repairOrder.vehicle.year} {est.repairOrder.vehicle.make} {est.repairOrder.vehicle.model}
+                  {est.repairOrder
+                    ? `${est.repairOrder.vehicle.year} ${est.repairOrder.vehicle.make} ${est.repairOrder.vehicle.model}`
+                    : "—"}
                 </td>
                 <td className="px-5 py-3 text-right font-semibold">{formatCurrency(est.total)}</td>
                 <td className="px-5 py-3">

@@ -4,6 +4,21 @@ export const resend = new Resend(process.env.RESEND_API_KEY!);
 
 const FROM = process.env.EMAIL_FROM || "noreply@autofixhq.com";
 
+/** Generic email sender. Returns the Resend response object. */
+export async function sendEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  shopId?: string;
+}) {
+  return resend.emails.send({
+    from: FROM,
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+  });
+}
+
 export async function sendInvoiceEmail(
   to: string,
   customerName: string,

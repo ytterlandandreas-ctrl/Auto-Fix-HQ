@@ -13,6 +13,6 @@ export async function POST(req: Request) {
   const integration = await db.integration.findFirst({ where: { shopId, type } });
   if (!integration) return NextResponse.json({ error: "Integration not found" }, { status: 404 });
 
-  await checkIntegrationHealth(shopId, type);
+  await checkIntegrationHealth(shopId);
   return NextResponse.json({ ok: true });
 }

@@ -8,22 +8,16 @@ export default async function AdminBillingPage() {
   const session = await auth();
   if ((session!.user as any).role !== "platform_owner") return null;
 
-  const [pastDue, recentPayments, failedPayments] = await Promise.all([
+  const [pastDue, recentPayments] = await Promise.all([
     db.shopSubscription.findMany({
       where: { status: "past_due" },
       include: { shop: { select: { id: true, name: true, email: true } } },
       orderBy: { updatedAt: "desc" },
     }),
     db.payment.findMany({
-      where: { status: "succeeded" },
       include: {
         invoice: { include: { repairOrder: { include: { customer: { select: { firstName: true, lastName: true } } } } } },
       },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    }),
-    db.payment.findMany({
-      where: { status: "failed" },
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
@@ -127,31 +121,6 @@ export default async function AdminBillingPage() {
           </tbody>
         </table>
       </div>
-
-      {/* Failed payments */}
-      {failedPayments.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <h2 className="font-semibold text-slate-900 px-5 py-3 border-b border-slate-100">Failed Payments</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="text-left px-5 py-3 font-medium text-slate-500">Date</th>
-                <th className="text-right px-5 py-3 font-medium text-slate-500">Amount</th>
-                <th className="text-left px-5 py-3 font-medium text-slate-500">Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              {failedPayments.map((p) => (
-                <tr key={p.id} className="border-b border-slate-50">
-                  <td className="px-5 py-3 text-slate-500 text-xs">{new Date(p.createdAt).toLocaleDateString()}</td>
-                  <td className="px-5 py-3 text-right font-medium">{formatCurrency(p.amount)}</td>
-                  <td className="px-5 py-3 text-xs text-red-600">{p.failureReason ?? "Unknown"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

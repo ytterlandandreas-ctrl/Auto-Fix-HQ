@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { RefreshCw, X, Play, ExternalLink, ArrowUpDown, Gift } from "lucide-react";
 import { toast } from "sonner";
-import { PLAN_DISPLAY, TIER_DISPLAY_PRICES } from "@/lib/plan-access";
+import { PLAN_DISPLAY, TIER_DISPLAY_PRICES, type PlanTier } from "@/lib/plan-access";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-100 text-green-700",
@@ -253,7 +253,7 @@ export function SubscriptionActionsClient({ subscriptions }: { subscriptions: an
             {subscriptions.map((sub) => {
               if (!sub.shop) return null;
               const tier = (sub.planTier as string) ?? "starter";
-              const tierPrice = TIER_DISPLAY_PRICES[tier] ?? 149;
+              const tierPrice = TIER_DISPLAY_PRICES[tier as PlanTier] ?? 149;
               const addonMRR = sub.addons.reduce((sum: number, a: any) => sum + (ADDON_PRICES[a.addonKey] ?? 0), 0);
               const mrr = (sub.status === "active" || sub.status === "complimentary") ? tierPrice + addonMRR : 0;
               const processors = (sub.shop.integrations ?? []).filter(

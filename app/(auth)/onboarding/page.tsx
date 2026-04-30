@@ -10,7 +10,7 @@ export default async function OnboardingPage() {
   const shopId = (session.user as any).shopId as string;
   const shop = await db.shop.findUnique({
     where: { id: shopId },
-    include: { locations: true, subscriptions: true },
+    include: { locations: true, subscription: true },
   });
 
   if (shop?.onboardedAt) redirect("/shop/dashboard");

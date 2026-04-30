@@ -7,12 +7,10 @@ export default async function CRMPage() {
   const session = await auth();
   const shopId = (session!.user as any).shopId as string;
 
-  const subscription = await db.shopSubscription.findFirst({
-    where: { shopId, status: { in: ["active", "trialing"] } },
-    include: { addons: true },
+  const addons = await db.shopAddon.findMany({
+    where: { shopId, isActive: true },
   });
-
-  const hasCRM = subscription?.addons?.some((a) => a.addonKey === "crm") ?? false;
+  const hasCRM = addons.some((a) => a.addonKey === "crm");
 
   if (!hasCRM) {
     return <CRMGate />;

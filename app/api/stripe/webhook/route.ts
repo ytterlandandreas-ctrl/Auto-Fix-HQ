@@ -3,7 +3,8 @@ import { constructWebhookEvent } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { isIdempotentKey } from "@/lib/redis";
 
-export const config = { api: { bodyParser: false } };
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();

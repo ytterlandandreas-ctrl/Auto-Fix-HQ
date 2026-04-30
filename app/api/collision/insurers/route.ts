@@ -11,7 +11,13 @@ export async function POST(req: Request) {
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
 
   const insurer = await db.insuranceCompany.create({
-    data: { shopId, name, phone: phone || null, email: email || null, address: address || null },
+    data: {
+      shopId,
+      name,
+      claimsPhone: phone || null,
+      email: email || null,
+      notes: address || null,
+    },
   });
   return NextResponse.json(insurer, { status: 201 });
 }

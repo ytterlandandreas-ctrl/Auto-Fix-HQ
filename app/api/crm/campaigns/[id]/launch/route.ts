@@ -13,29 +13,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Get target customers based on trigger type
-  let customers: any[] = [];
+  let customers: { id: string; firstName: string; lastName: string; phone: string }[] = [];
   const now = new Date();
 
   if (campaign.triggerType === "win_back") {
     const cutoff = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
     customers = await db.customer.findMany({
-      where: { shopId, smsOptIn: true, phone: { not: null }, lastVisitAt: { lt: cutoff } },
+      where: { shopId, smsOptIn: true, lastVisitAt: { lt: cutoff } },
       select: { id: true, firstName: true, lastName: true, phone: true },
     });
   } else if (campaign.triggerType === "oil_change_due") {
     const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
     customers = await db.customer.findMany({
-      where: { shopId, smsOptIn: true, phone: { not: null }, lastVisitAt: { lt: cutoff } },
-      select: { id: true, firstName: true, lastName: true, phone: true },
-    });
-  } else if (campaign.triggerType === "manual_segment") {
-    customers = await db.customer.findMany({
-      where: { shopId, smsOptIn: true, phone: { not: null } },
+      where: { shopId, smsOptIn: true, lastVisitAt: { lt: cutoff } },
       select: { id: true, firstName: true, lastName: true, phone: true },
     });
   } else {
     customers = await db.customer.findMany({
-      where: { shopId, smsOptIn: true, phone: { not: null } },
+      where: { shopId, smsOptIn: true },
       select: { id: true, firstName: true, lastName: true, phone: true },
     });
   }
@@ -46,23 +41,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     select: { customerId: true },
   });
   const enrolledSet = new Set(existing.map((e) => e.customerId));
-  const targets = customers.filter((c) => !enrolledSet.has(c.id));
+  const targets = customers.filter((c) => !enrolledSet.has(c.id) && !!c.phone);
 
   let sent = 0;
   let failed = 0;
 
   for (const customer of targets) {
     try {
-      const body = (campaign.messageTemplate as string)
+      const body = campaign.body
         .replace(/\{first_name\}/gi, customer.firstName)
         .replace(/\{last_name\}/gi, customer.lastName ?? "");
 
       if (campaign.channel === "sms" && customer.phone) {
-        await sendSMS({ to: customer.phone, body, shopId, customerId: customer.id });
+        await sendSMS(customer.phone, body, shopId, customer.id);
       }
 
       await db.cRMEnrollment.create({
-        data: { campaignId: id, customerId: customer.id, status: "sent", sentAt: now },
+        data: {
+          campaignId: id,
+          customerId: customer.id,
+          status: "sent",
+          scheduledAt: now,
+          sentAt: now,
+        },
       });
       sent++;
     } catch {
