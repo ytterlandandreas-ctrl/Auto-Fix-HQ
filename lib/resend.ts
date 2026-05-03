@@ -1,6 +1,13 @@
 import { Resend } from "resend";
 
-export const resend = new Resend(process.env.RESEND_API_KEY!);
+let _resend: Resend | null = null;
+export const resend: Resend = new Proxy({} as Resend, {
+  get(_target, prop) {
+    if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY!);
+    const val = (_resend as any)[prop];
+    return typeof val === "function" ? val.bind(_resend) : val;
+  },
+});
 
 const FROM = process.env.EMAIL_FROM || "noreply@autofixhq.com";
 

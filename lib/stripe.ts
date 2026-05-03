@@ -1,8 +1,17 @@
 import Stripe from "stripe";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-04-22.dahlia",
-  typescript: true,
+let _stripe: Stripe | null = null;
+export const stripe: Stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    if (!_stripe) {
+      _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+        apiVersion: "2026-04-22.dahlia",
+        typescript: true,
+      });
+    }
+    const val = (_stripe as any)[prop];
+    return typeof val === "function" ? val.bind(_stripe) : val;
+  },
 });
 
 // ─── Plan Tier Prices ───────────────────────────────────────────────────────

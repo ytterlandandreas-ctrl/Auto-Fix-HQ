@@ -27,7 +27,7 @@ export default async function AdminAnalyticsPage({
     google_reviews: 19, tech_suite: 19, collision: 39, sms_campaigns: 29,
   };
 
-  const MRR = totalActive * 149 + addonBreakdown.reduce((sum, a) => {
+  const MRR = totalActive * 149 + addonBreakdown.reduce((sum: number, a: { addonKey: string; _count: { id: number } }) => {
     return sum + (a._count.id * (ADDON_PRICES[a.addonKey] ?? 0));
   }, 0);
 
@@ -82,7 +82,7 @@ export default async function AdminAnalyticsPage({
       <div className="bg-white rounded-xl border border-slate-200 p-5">
         <h2 className="font-semibold text-slate-900 mb-4">Add-on Adoption</h2>
         <div className="space-y-3">
-          {addonBreakdown.map((a) => {
+          {addonBreakdown.map((a: { addonKey: string; _count: { id: number } }) => {
             const total = totalActive + totalTrialing || 1;
             const pct = Math.round((a._count.id / total) * 100);
             const price = ADDON_PRICES[a.addonKey] ?? 0;
@@ -116,7 +116,7 @@ export default async function AdminAnalyticsPage({
               <span className="text-slate-600">Base plan revenue</span>
               <span className="font-medium">{formatCurrency(totalActive * 149)}/mo</span>
             </div>
-            {addonBreakdown.map((a) => (
+            {addonBreakdown.map((a: { addonKey: string; _count: { id: number } }) => (
               <div key={a.addonKey} className="flex justify-between text-xs">
                 <span className="text-slate-400 capitalize">{a.addonKey.replace("_", " ")}</span>
                 <span className="text-slate-600">{formatCurrency(a._count.id * (ADDON_PRICES[a.addonKey] ?? 0))}/mo</span>
